@@ -23,7 +23,7 @@ module.exports = function base() {
     module: {
       rules: [{
         test: /\.js$/,
-        exclude: /node_modules/,
+        exclude: /node_modules\/(?!regl-vr\/)/,
         use: {
           loader: 'babel-loader',
           options: {
