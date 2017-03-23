@@ -6,7 +6,7 @@ module.exports = function base() {
   return {
     entry: {
       'main': [
-        './node_modules/webvr-polyfill/src/webvr-polyfill.js',
+        './node_modules/webvr-polyfill/build/webvr-polyfill',
         './src/main.js'
       ]
     },
