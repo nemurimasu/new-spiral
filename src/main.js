@@ -8,6 +8,8 @@ import fragmentShader from './spiral.frag';
 const gl = regl({container: '#main-canvas', attributes: {alpha: true}});
 const webVr = reglVr({regl: gl});
 const startTime = Date.now();
+const invProjection = mat4.create();
+const invView = mat4.create();
 const drawTriangle = gl({
   frag: fragmentShader,
   vert: vertexShader,
@@ -17,20 +19,21 @@ const drawTriangle = gl({
   count: 3,
   uniforms: {
     time: () => (Date.now() - startTime) / 1000.0,
-    invProjection: ({projection}) => mat4.invert([], projection),
-    invView: ({view}) => mat4.invert([], view)
+    invProjection: ({projection}) => mat4.invert(invProjection, projection),
+    invView: ({view}) => mat4.invert(invView, view)
   }
 });
 
 // normal, non-vr section
-const lookAhead = mat4.lookAt([],
+const normalProjection = mat4.create();
+const lookAhead = mat4.lookAt(mat4.create(),
   [0, 0, 0],
-  [0, 0, 1],
+  [0, 0, -1],
   [0, 1, 0]);
 const fixView = gl({
   context: {
     projection: ({viewportWidth, viewportHeight}) => {
-      return mat4.perspective([], Math.PI / 4, viewportWidth / viewportHeight, 0.1, 30);
+      return mat4.perspective(normalProjection, Math.PI / 4, viewportWidth / viewportHeight, 0.01, 10000);
     },
     view: lookAhead
   }
@@ -62,7 +65,12 @@ if (navigator.getVRDisplays) {
       let draw;
       draw = () => {
         vrDisplay.requestAnimationFrame(draw);
+
+        // this is required for the webvr polyfill
+        gl.clear({depth: 1});
         webVr({vrDisplay}, drawTriangle);
+        // required for polyfill
+        gl._refresh();
       };
 
       const leftEye = vrDisplay.getEyeParameters('left');
