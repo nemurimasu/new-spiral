@@ -1,6 +1,7 @@
 import regl from 'regl';
 import reglVr from 'regl-vr';
 import mat4 from 'gl-mat4';
+import quat from 'gl-quat';
 
 import vertexShader from './spiral.vert';
 import fragmentShader from './spiral.frag';
@@ -10,6 +11,7 @@ const webVr = reglVr({regl: gl});
 const startTime = Date.now();
 const invProjection = mat4.create();
 const invView = mat4.create();
+const invModel = mat4.create();
 const drawTriangle = gl({
   frag: fragmentShader,
   vert: vertexShader,
@@ -20,9 +22,12 @@ const drawTriangle = gl({
   uniforms: {
     time: () => (Date.now() - startTime) / 1000.0,
     invProjection: ({projection}) => mat4.invert(invProjection, projection),
-    invView: ({view}) => mat4.invert(invView, view)
+    invView: ({view}) => mat4.invert(invView, view),
+    invModel: () => mat4.invert(invModel, modelTransform)
   }
 });
+
+const modelTransform = mat4.create();
 
 // normal, non-vr section
 const normalProjection = mat4.create();
@@ -62,16 +67,6 @@ if (navigator.getVRDisplays) {
       event.preventDefault();
 
       stopNormal();
-      let draw;
-      draw = () => {
-        vrDisplay.requestAnimationFrame(draw);
-
-        // this is required for the webvr polyfill
-        gl.clear({depth: 1});
-        webVr({vrDisplay}, drawTriangle);
-        // required for polyfill
-        gl._refresh();
-      };
 
       const leftEye = vrDisplay.getEyeParameters('left');
       const rightEye = vrDisplay.getEyeParameters('right');
@@ -81,7 +76,40 @@ if (navigator.getVRDisplays) {
       });
 
       vrDisplay.requestPresent([{ source: gl._gl.canvas }]).then(() => {
-        vrDisplay.requestAnimationFrame(draw);
+        let updateVr;
+        const frameData = new VRFrameData();
+        const modelTranslation = new Float32Array(3);
+        const modelRotation = quat.create();
+        let lastTime = 0.0;
+        updateVr = (time) => {
+          vrDisplay.requestAnimationFrame(updateVr);
+
+          const dt = time - lastTime;
+          lastTime = time;
+          vrDisplay.getFrameData(frameData);
+          const vrPose = frameData.pose;
+          if (vrPose) {
+            const factor = Math.min(0.00025 * dt, 1.0);
+            const vrPos = vrPose.position;
+            if (vrPos) {
+              for (let axis = 0; axis < 3; axis++) {
+                modelTranslation[axis] += (vrPos[axis] - modelTranslation[axis]) * factor;
+              }
+            }
+            const vrRot = vrPose.orientation;
+            if (vrRot) {
+              quat.slerp(modelRotation, modelRotation, vrRot, factor);
+            }
+            mat4.fromRotationTranslation(modelTransform, modelRotation, modelTranslation);
+          }
+
+          // this is required for the webvr polyfill
+          gl.clear({depth: 1});
+          webVr({vrDisplay}, drawTriangle);
+          // required for polyfill
+          gl._refresh();
+        };
+        vrDisplay.requestAnimationFrame(updateVr);
       });
     };
     button.addEventListener('click', onClick, false);
