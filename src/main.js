@@ -71,10 +71,10 @@ if (navigator.getVRDisplays) {
 
       const leftEye = vrDisplay.getEyeParameters('left');
       const rightEye = vrDisplay.getEyeParameters('right');
-      Object.assign(gl._gl.canvas, {
+      const canvasParams = {
         width: Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2,
         height: Math.max(leftEye.renderHeight, rightEye.renderHeight)
-      });
+      };
 
       vrDisplay.requestPresent([{ source: gl._gl.canvas }]).then(() => {
         let updateVr;
@@ -87,10 +87,16 @@ if (navigator.getVRDisplays) {
             time: gl.prop('time')
           }
         });
-        const render = () => webVr({vrDisplay}, drawTriangle);
+        const webVrParam = {vrDisplay};
+        const render = () => webVr(webVrParam, drawTriangle);
         let lastTime = 0.0;
+        const clearParams = {depth: 1};
+        const timeParam = {time: 0.0};
         updateVr = (time) => {
           vrDisplay.requestAnimationFrame(updateVr);
+
+          // make sure window resizes don't ruin the spiral
+          Object.assign(gl._gl.canvas, canvasParams);
 
           // move spiral to stay in view
           const dt = time - lastTime;
@@ -113,8 +119,9 @@ if (navigator.getVRDisplays) {
           }
 
           // this is required for the webvr polyfill
-          gl.clear({depth: 1});
-          fixTime({time: time / 1000.0}, render);
+          gl.clear(clearParams);
+          timeParam.time = time / 1000.0;
+          fixTime(timeParam, render);
           // required for polyfill
           gl._refresh();
         };
