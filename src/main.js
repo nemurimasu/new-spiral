@@ -20,7 +20,10 @@ const drawTriangle = gl({
   },
   count: 3,
   uniforms: {
-    time: () => (Date.now() - startTime) / 1000.0,
+    // 1.0 matches the spiral period as defined by spiral.frag.
+    // without this division, the spiral will become choppy over time,
+    // especially on mobile GPUs.
+    time: ({time}) => time % 1.0,
     invProjection: ({projection}) => mat4.invert(invProjection, projection),
     invView: ({view}) => mat4.invert(invView, view),
     invModel: () => mat4.invert(invModel, modelTransform)
@@ -43,9 +46,7 @@ const fixView = gl({
     view: lookAhead
   }
 });
-const {cancel: stopNormal} = gl.frame(() => {
-  fixView({}, drawTriangle);
-});
+const {cancel: stopNormal} = gl.frame(() => fixView(drawTriangle));
 
 if (navigator.getVRDisplays) {
   navigator.getVRDisplays().then((vrDisplays) => {
@@ -80,10 +81,18 @@ if (navigator.getVRDisplays) {
         const frameData = new VRFrameData();
         const modelTranslation = new Float32Array(3);
         const modelRotation = quat.create();
+        // without gl.frame, apparently the time context needs manual updating
+        const fixTime = gl({
+          context: {
+            time: gl.prop('time')
+          }
+        });
+        const render = () => webVr({vrDisplay}, drawTriangle);
         let lastTime = 0.0;
         updateVr = (time) => {
           vrDisplay.requestAnimationFrame(updateVr);
 
+          // move spiral to stay in view
           const dt = time - lastTime;
           lastTime = time;
           vrDisplay.getFrameData(frameData);
@@ -105,7 +114,7 @@ if (navigator.getVRDisplays) {
 
           // this is required for the webvr polyfill
           gl.clear({depth: 1});
-          webVr({vrDisplay}, drawTriangle);
+          fixTime({time: time / 1000.0}, render);
           // required for polyfill
           gl._refresh();
         };
