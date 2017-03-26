@@ -64,17 +64,10 @@ if (navigator.getVRDisplays) {
     let onClick;
     onClick = (event) => {
       button.removeEventListener('click', onClick);
-      delete button.style.display;
+      button.style.display = 'none';
       event.preventDefault();
 
       stopNormal();
-
-      const leftEye = vrDisplay.getEyeParameters('left');
-      const rightEye = vrDisplay.getEyeParameters('right');
-      const canvasParams = {
-        width: Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2,
-        height: Math.max(leftEye.renderHeight, rightEye.renderHeight)
-      };
 
       vrDisplay.requestPresent([{ source: gl._gl.canvas }]).then(() => {
         let updateVr;
@@ -92,6 +85,7 @@ if (navigator.getVRDisplays) {
         let lastTime = 0.0;
         const clearParams = {depth: 1};
         const timeParam = {time: 0.0};
+        const canvasParams = {};
         updateVr = (time) => {
           vrDisplay.requestAnimationFrame(updateVr);
 
@@ -125,7 +119,28 @@ if (navigator.getVRDisplays) {
           // required for polyfill
           gl._refresh();
         };
-        vrDisplay.requestAnimationFrame(updateVr);
+        // workaround for Chrome Beta Daydream bug:
+        // get eye parameters in first frames rendered,
+        // because often they are still 0x0 and isPresenting is false
+        // in the requestPresent callback and for first few frames :(
+        const firstRun = (time) => {
+          const leftEye = vrDisplay.getEyeParameters('left');
+          const rightEye = vrDisplay.getEyeParameters('right');
+          Object.assign(canvasParams, {
+            width: Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2,
+            height: Math.max(leftEye.renderHeight, rightEye.renderHeight)
+          });
+
+          if (canvasParams.width === 0 || canvasParams.height === 0) {
+            console.warn('daydream gave bad eyes x_x');
+            vrDisplay.submitFrame();
+            vrDisplay.requestAnimationFrame(firstRun);
+            return;
+          }
+
+          updateVr(time);
+        };
+        vrDisplay.requestAnimationFrame(firstRun);
       });
     };
     button.addEventListener('click', onClick, false);
