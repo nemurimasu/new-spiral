@@ -5,3 +5,10 @@ new WebVRPolyfill({
   DIRTY_SUBMIT_FRAME_BINDINGS: true,
   ROTATE_INSTRUCTIONS_DISABLED: true
 });
+
+
+const reglVr = require('regl-vr');
+
+export default function (gl) {
+  return reglVr({ regl: gl });
+}

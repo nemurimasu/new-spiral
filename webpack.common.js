@@ -5,13 +5,20 @@ var webpack = require('webpack');
 module.exports = {
   entry: {
     'main': [
-      './src/vr.js',
       './src/main.js'
     ]
   },
   output: {
     filename: '[name].bundle.js',
     path: path.resolve(__dirname, './dist'),
+  },
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        name: 'vr',
+        chunks: 'async'
+      }
+    }
   },
   module: {
     rules: [{

@@ -1,5 +1,4 @@
 import regl from 'regl';
-import reglVr from 'regl-vr';
 import mat4 from 'gl-mat4';
 import quat from 'gl-quat';
 
@@ -7,7 +6,6 @@ import vertexShader from './spiral.vert';
 import fragmentShader from './spiral.frag';
 
 const gl = regl({ container: '#main-canvas', attributes: { alpha: true } });
-const webVr = reglVr({ regl: gl });
 const startTime = Date.now();
 const invProjection = mat4.create();
 const invView = mat4.create();
@@ -48,101 +46,104 @@ const fixView = gl({
 });
 const { cancel: stopNormal } = gl.frame(() => fixView(drawTriangle));
 
-if (navigator.getVRDisplays) {
-  navigator.getVRDisplays().then((vrDisplays) => {
+import(/* webpackPreload: true */ /* webpackChunkName: "vr" */ './vr').then(vr => {
+  const webVr = vr.default(gl);
 
-    if (vrDisplays.length === 0) {
-      return;
-    }
-    // what if somebody has multiple VR displays? how are we supposed to choose?
+  if (navigator.getVRDisplays) {
+    navigator.getVRDisplays().then(vrDisplays => {
+      if (vrDisplays.length === 0) {
+        return;
+      }
+      // what if somebody has multiple VR displays? how are we supposed to choose?
 
-    const vrDisplay = vrDisplays[0];
-    console.log(`VR display detected: ${vrDisplay.displayName}`);
+      const vrDisplay = vrDisplays[0];
+      console.log(`VR display detected: ${vrDisplay.displayName}`);
 
-    const button = document.getElementById('vr-button');
-    button.style.display = 'block';
-    let onClick;
-    onClick = (event) => {
-      button.removeEventListener('click', onClick);
-      button.style.display = 'none';
-      event.preventDefault();
+      const button = document.getElementById('vr-button');
+      button.style.display = 'block';
+      let onClick;
+      onClick = (event) => {
+        button.removeEventListener('click', onClick);
+        button.style.display = 'none';
+        event.preventDefault();
 
-      stopNormal();
+        stopNormal();
 
-      vrDisplay.requestPresent([{ source: gl._gl.canvas }]).then(() => {
-        let updateVr;
-        const frameData = new VRFrameData();
-        const modelTranslation = new Float32Array(3);
-        const modelRotation = quat.create();
-        // without gl.frame, apparently the time context needs manual updating
-        const fixTime = gl({
-          context: {
-            time: gl.prop('time')
-          }
-        });
-        const webVrParam = { vrDisplay };
-        const render = () => webVr(webVrParam, drawTriangle);
-        let lastTime = 0.0;
-        const clearParams = { depth: 1 };
-        const timeParam = { time: 0.0 };
-        const canvasParams = {};
-        updateVr = (time) => {
-          vrDisplay.requestAnimationFrame(updateVr);
-
-          // make sure window resizes don't ruin the spiral
-          Object.assign(gl._gl.canvas, canvasParams);
-
-          // move spiral to stay in view
-          const dt = time - lastTime;
-          lastTime = time;
-          vrDisplay.getFrameData(frameData);
-          const vrPose = frameData.pose;
-          if (vrPose) {
-            const factor = Math.min(0.00025 * dt, 1.0);
-            const vrPos = vrPose.position;
-            if (vrPos) {
-              for (let axis = 0; axis < 3; axis++) {
-                modelTranslation[axis] += (vrPos[axis] - modelTranslation[axis]) * factor;
-              }
+        vrDisplay.requestPresent([{ source: gl._gl.canvas }]).then(() => {
+          let updateVr;
+          const frameData = new VRFrameData();
+          const modelTranslation = new Float32Array(3);
+          const modelRotation = quat.create();
+          // without gl.frame, apparently the time context needs manual updating
+          const fixTime = gl({
+            context: {
+              time: gl.prop('time')
             }
-            const vrRot = vrPose.orientation;
-            if (vrRot) {
-              quat.slerp(modelRotation, modelRotation, vrRot, factor);
-            }
-            mat4.fromRotationTranslation(modelTransform, modelRotation, modelTranslation);
-          }
-
-          // this is required for the webvr polyfill
-          gl.clear(clearParams);
-          timeParam.time = time / 1000.0;
-          fixTime(timeParam, render);
-          // required for polyfill
-          gl._refresh();
-        };
-        // workaround for Chrome Beta Daydream bug:
-        // get eye parameters in first frames rendered,
-        // because often they are still 0x0 and isPresenting is false
-        // in the requestPresent callback and for first few frames :(
-        const firstRun = (time) => {
-          const leftEye = vrDisplay.getEyeParameters('left');
-          const rightEye = vrDisplay.getEyeParameters('right');
-          Object.assign(canvasParams, {
-            width: Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2,
-            height: Math.max(leftEye.renderHeight, rightEye.renderHeight)
           });
+          const webVrParam = { vrDisplay };
+          const render = () => webVr(webVrParam, drawTriangle);
+          let lastTime = 0.0;
+          const clearParams = { depth: 1 };
+          const timeParam = { time: 0.0 };
+          const canvasParams = {};
+          updateVr = (time) => {
+            vrDisplay.requestAnimationFrame(updateVr);
 
-          if (canvasParams.width === 0 || canvasParams.height === 0) {
-            console.warn('daydream gave bad eyes x_x');
-            vrDisplay.submitFrame();
-            vrDisplay.requestAnimationFrame(firstRun);
-            return;
-          }
+            // make sure window resizes don't ruin the spiral
+            Object.assign(gl._gl.canvas, canvasParams);
 
-          updateVr(time);
-        };
-        vrDisplay.requestAnimationFrame(firstRun);
-      });
-    };
-    button.addEventListener('click', onClick, false);
-  });
-}
+            // move spiral to stay in view
+            const dt = time - lastTime;
+            lastTime = time;
+            vrDisplay.getFrameData(frameData);
+            const vrPose = frameData.pose;
+            if (vrPose) {
+              const factor = Math.min(0.00025 * dt, 1.0);
+              const vrPos = vrPose.position;
+              if (vrPos) {
+                for (let axis = 0; axis < 3; axis++) {
+                  modelTranslation[axis] += (vrPos[axis] - modelTranslation[axis]) * factor;
+                }
+              }
+              const vrRot = vrPose.orientation;
+              if (vrRot) {
+                quat.slerp(modelRotation, modelRotation, vrRot, factor);
+              }
+              mat4.fromRotationTranslation(modelTransform, modelRotation, modelTranslation);
+            }
+
+            // this is required for the webvr polyfill
+            gl.clear(clearParams);
+            timeParam.time = time / 1000.0;
+            fixTime(timeParam, render);
+            // required for polyfill
+            gl._refresh();
+          };
+          // workaround for Chrome Beta Daydream bug:
+          // get eye parameters in first frames rendered,
+          // because often they are still 0x0 and isPresenting is false
+          // in the requestPresent callback and for first few frames :(
+          const firstRun = (time) => {
+            const leftEye = vrDisplay.getEyeParameters('left');
+            const rightEye = vrDisplay.getEyeParameters('right');
+            Object.assign(canvasParams, {
+              width: Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2,
+              height: Math.max(leftEye.renderHeight, rightEye.renderHeight)
+            });
+
+            if (canvasParams.width === 0 || canvasParams.height === 0) {
+              console.warn('daydream gave bad eyes x_x');
+              vrDisplay.submitFrame();
+              vrDisplay.requestAnimationFrame(firstRun);
+              return;
+            }
+
+            updateVr(time);
+          };
+          vrDisplay.requestAnimationFrame(firstRun);
+        });
+      };
+      button.addEventListener('click', onClick, false);
+    });
+  }
+});
