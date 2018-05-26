@@ -6,8 +6,8 @@ import quat from 'gl-quat';
 import vertexShader from './spiral.vert';
 import fragmentShader from './spiral.frag';
 
-const gl = regl({container: '#main-canvas', attributes: {alpha: true}});
-const webVr = reglVr({regl: gl});
+const gl = regl({ container: '#main-canvas', attributes: { alpha: true } });
+const webVr = reglVr({ regl: gl });
 const startTime = Date.now();
 const invProjection = mat4.create();
 const invView = mat4.create();
@@ -23,9 +23,9 @@ const drawTriangle = gl({
     // 1.0 matches the spiral period as defined by spiral.frag.
     // without this division, the spiral will become choppy over time,
     // especially on mobile GPUs.
-    time: ({time}) => time % 1.0,
-    invProjection: ({projection}) => mat4.invert(invProjection, projection),
-    invView: ({view}) => mat4.invert(invView, view),
+    time: ({ time }) => time % 1.0,
+    invProjection: ({ projection }) => mat4.invert(invProjection, projection),
+    invView: ({ view }) => mat4.invert(invView, view),
     invModel: () => mat4.invert(invModel, modelTransform)
   }
 });
@@ -40,13 +40,13 @@ const lookAhead = mat4.lookAt(mat4.create(),
   [0, 1, 0]);
 const fixView = gl({
   context: {
-    projection: ({viewportWidth, viewportHeight}) => {
+    projection: ({ viewportWidth, viewportHeight }) => {
       return mat4.perspective(normalProjection, Math.PI / 4, viewportWidth / viewportHeight, 0.01, 10000);
     },
     view: lookAhead
   }
 });
-const {cancel: stopNormal} = gl.frame(() => fixView(drawTriangle));
+const { cancel: stopNormal } = gl.frame(() => fixView(drawTriangle));
 
 if (navigator.getVRDisplays) {
   navigator.getVRDisplays().then((vrDisplays) => {
@@ -80,11 +80,11 @@ if (navigator.getVRDisplays) {
             time: gl.prop('time')
           }
         });
-        const webVrParam = {vrDisplay};
+        const webVrParam = { vrDisplay };
         const render = () => webVr(webVrParam, drawTriangle);
         let lastTime = 0.0;
-        const clearParams = {depth: 1};
-        const timeParam = {time: 0.0};
+        const clearParams = { depth: 1 };
+        const timeParam = { time: 0.0 };
         const canvasParams = {};
         updateVr = (time) => {
           vrDisplay.requestAnimationFrame(updateVr);
