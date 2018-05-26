@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [0.0.3] - 2018-05-26
 ### Fixed
 - Picked up Chrome fixes from new WebVR Polyfill
 
@@ -16,5 +18,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Basic spiral that works in WebVR
 
-[Unreleased]: https://github.com/nemurimasu/new-spiral/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/nemurimasu/new-spiral/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/nemurimasu/new-spiral/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/nemurimasu/new-spiral/compare/v0.0.1...v0.0.2
