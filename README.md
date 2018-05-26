@@ -29,7 +29,7 @@ If your browser supports WebVR, a small button will appear in the top left, allo
 
 ### Development
 
-`yarn serve` will launch a development server.
+`yarn start` will launch a development server.
 
 ## License
 
