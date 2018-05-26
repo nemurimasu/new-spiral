@@ -24,12 +24,6 @@ module.exports = {
         }
       }
     }, {
-      test: /\.css$/,
-      use: ['to-string-loader', 'css-loader']
-    }, {
-      test: /\.(jpg|png|gif)$/,
-      use: 'file-loader'
-    }, {
       test: /\.(frag|vert)$/,
       exclude: /node_modules/,
       use: ['raw-loader', 'glslify-loader']
